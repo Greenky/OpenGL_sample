@@ -5,6 +5,10 @@
 // GLFW
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define READ_SIZE 100
 
 // Вертекс шейдер
 const GLchar* vertexShaderSource =
@@ -27,6 +31,130 @@ const GLchar* fragmentShaderSource =
 "{\n"
 	"color = vec4(outColor, 1.0f);\n"
 "}\n\0";
+
+char* get_file_content(FILE *fd)//(int fd)
+{
+	char* file_content = NULL;
+	char* temp = NULL;
+
+	int red = 0;
+	int current = 0;
+	char buffer[READ_SIZE];
+	//while (red = read(fd, buffer, READ_SIZE))
+	while (red = fread(buffer, sizeof(char), READ_SIZE, fd))
+	{
+		if (ferror(fd))// (red == -1)
+			return NULL;
+		else
+		{
+			if (file_content)
+			{
+				temp = (char*)malloc(current);
+				//bzero(temp, current);
+				std::fill(temp, temp + current, 0);
+				for (int i = 0; i < current; i++)
+					temp[i] = file_content[i];
+				free(file_content);
+			}
+			file_content = (char*)malloc(current + READ_SIZE + 1);
+			//bzero(file_content, current + READ_SIZE + 1);
+			std::fill(file_content, file_content + current + READ_SIZE + 1, 0);
+			if (temp)
+			{
+				for (int i = 0; i < current; i++)
+					file_content[i] = temp[i];
+				free(temp);
+			}
+			for (int i = 0; i < red; i++)
+				file_content[current + i] = buffer[i];
+			current += red;
+			file_content[current] = 0;
+			if (red < READ_SIZE)
+				break;
+		}
+		if (feof(fd)) //(red == 0)
+			break;
+		std::fill(buffer, buffer + READ_SIZE, 0);
+	}
+	return file_content;
+}
+
+GLuint CreateShaderProgram_Files(const char* vertexShaderPath, const char* fragmentShaderPath)
+{
+	FILE *fdV, *fdF;
+	fopen_s(&fdV, vertexShaderPath, "r");
+	fopen_s(&fdF, fragmentShaderPath, "r");
+	if (fdF == NULL || fdV == NULL)
+	{
+		std::cout << "Failed to open file(s)" << std::endl;
+		return -1;
+	}
+	GLint success;
+	GLchar infoLog[512];
+
+	GLchar* fileString = (GLchar *)get_file_content(fdV);
+
+	// Creating, and compiling vertex shader
+	GLuint vertexShader;
+	vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &fileString, NULL);
+	glCompileShader(vertexShader);
+
+	// Debug vertex shader code
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		std::fill(infoLog, infoLog + sizeof(infoLog), 0);
+		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+		std::cout << "ERROR in Vertex Shader compilation: " << infoLog << std::endl;
+		return -1;
+	}
+	free(fileString);
+
+
+	fileString = (GLchar*)get_file_content(fdF);
+
+	// Creating, and compiling fragment shader
+	GLuint fragmentShader;
+	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fileString, NULL);
+	glCompileShader(fragmentShader);
+
+	// Debug fragment shader code
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		std::fill(infoLog, infoLog + sizeof(infoLog), 0);
+		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+		std::cout << "ERROR in Fragment Shader compilation: " << infoLog << std::endl;
+		return -1;
+	}
+	free(fileString);
+
+	// Creating shader program and attaching 2 shaders
+	GLuint shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
+	// Debug program compilation
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	if (!success) {
+		std::fill(infoLog, infoLog + sizeof(infoLog), 0);
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		std::cout << "ERROR in Shader Program compilation: " << infoLog << std::endl;
+		return -1;
+	}
+	// Deleting shaders
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+	//
+
+	fclose(fdV);
+	fclose(fdF);
+	
+	return shaderProgram;
+}
 
 int main()
 {
@@ -101,7 +229,6 @@ int main()
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
 	
 	// Vertex Shader draw mode
 	// Vertexes
@@ -113,57 +240,8 @@ int main()
 
 	glBindVertexArray(0);
 
-	// Creating, and compiling vertex shader
-	GLuint vertexShader;
-	vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-	glCompileShader(vertexShader);
-	
-	// Debug vertex shader code
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		std::fill(infoLog, infoLog + sizeof(infoLog), 0);
-		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		std::cout << "ERROR in Vertex Shader compilation: " << infoLog << std::endl;
-		return -1;
-	}
-
-	// Creating, and compiling fragment shader
-	GLuint fragmentShader;
-	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-
-	// Debug fragment shader code
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		std::fill(infoLog, infoLog + sizeof(infoLog), 0);
-		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		std::cout << "ERROR in Fragment Shader compilation: " << infoLog << std::endl;
-		return -1;
-	}
-
-	// Creating shader program and attaching 2 shaders
 	GLuint shaderProgram;
-	shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-
-	// Debug program compilation
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if(!success) {
-		std::fill(infoLog, infoLog + sizeof(infoLog), 0);
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		std::cout << "ERROR in Shader Program compilation: " << infoLog << std::endl;
-		return -1;
-	}
-	// Deleting shaders
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-	//
+	shaderProgram = CreateShaderProgram_Files("vertexShader.shad", "fragmentShader.shad");
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Whireframe draw mode
 

@@ -15,6 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <None Include="fragmentShader.shad" />
+    <None Include="vertexShader.shad" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="Source.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

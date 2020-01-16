@@ -1,2 +1,4 @@
 ﻿  Source.cpp
+D:\OpenGL\Sample_OpenGL\Source.cpp(258,9): warning C4101:  'infoLog': unreferenced local variable
+D:\OpenGL\Sample_OpenGL\Source.cpp(257,8): warning C4101:  'success': unreferenced local variable
   Sample_OpenGL.vcxproj -> D:\OpenGL\Sample_OpenGL\Debug\Sample_OpenGL.exe
