@@ -4,6 +4,8 @@
 #include <GL/glew.h>
 // GLFW
 #include <GLFW/glfw3.h>
+//SOIL
+#include <SOIL/SOIL.h>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +33,20 @@ const GLchar* fragmentShaderSource =
 "{\n"
 	"color = vec4(outColor, 1.0f);\n"
 "}\n\0";
+
+float g_offset = 0.2f;
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+	// Когда пользователь нажимает ESC, мы устанавливаем свойство WindowShouldClose в true, 
+	// и приложение после этого закроется
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, GL_TRUE);
+	else if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+		g_offset < 1 ? g_offset += 0.05f : 0;
+	else if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
+		g_offset > 0 ? g_offset -= 0.05f : 0;
+}
 
 char* get_file_content(FILE *fd)//(int fd)
 {
@@ -79,7 +95,7 @@ char* get_file_content(FILE *fd)//(int fd)
 	return file_content;
 }
 
-GLuint CreateShaderProgram_Files(const char* vertexShaderPath, const char* fragmentShaderPath)
+GLuint CreateShaderProgram(const char* vertexShaderPath, const char* fragmentShaderPath)
 {
 	FILE *fdV, *fdF;
 	fopen_s(&fdV, vertexShaderPath, "r");
@@ -172,7 +188,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// Створення вікна 800х600
-	GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(800, 800, "LearnOpenGL", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -200,10 +216,11 @@ int main()
 	GLchar infoLog[512];
 
 	GLfloat vertices[] = {
-	 0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // Верхній правий кут
-	 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,  // Нижній правий кут
-	-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,  // Нижній лівий кут
-	-0.5f,  0.5f, 0.0f, 0.3f, 0.3f, 0.3f   // Верхній лівий кут
+	// Позиції				// Кольори			// Текстурні координати
+	 0.5f,  0.5f, 0.0f,		1.0f, 0.0f, 0.0f,	1.0f, 1.0f,  // Верхній правий кут
+	 0.5f, -0.5f, 0.0f,		0.0f, 1.0f, 0.0f,	1.0f, 0.0f,  // Нижній правий кут
+	-0.5f, -0.5f, 0.0f,		0.0f, 0.0f, 1.0f,	0.0f, 0.0f,  // Нижній лівий кут
+	-0.5f,  0.5f, 0.0f,		1.0f, 1.0f, 0.3f,	0.0f, 1.0f   // Верхній лівий кут
 	};
 	GLuint indices[] = {
 	0, 1, 2,   // трикутник 1
@@ -232,19 +249,50 @@ int main()
 	
 	// Vertex Shader draw mode
 	// Vertexes
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	//Colors
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
+	//Textures
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(2);
 
 	glBindVertexArray(0);
 
 	GLuint shaderProgram;
-	shaderProgram = CreateShaderProgram_Files("vertexShader.shad", "fragmentShader.shad");
+	shaderProgram = CreateShaderProgram("vertexShader.shad", "fragmentShader.shad");
+
+	// Textures drawing
+	GLuint texture1;
+	GLuint texture2;
+	// ====================
+	// Texture 1
+	// ====================
+	glGenTextures(1, &texture1);
+	glBindTexture(GL_TEXTURE_2D, texture1);
+	int w, h;
+	unsigned char* image = SOIL_load_image("container.jpg", &w, &h, 0, SOIL_LOAD_RGB);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	SOIL_free_image_data(image);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	// ====================
+	// Texture 2
+	// ====================
+	glGenTextures(1, &texture2);
+	glBindTexture(GL_TEXTURE_2D, texture2);
+	image = SOIL_load_image("awesomeface.png", &w, &h, 0, SOIL_LOAD_RGB);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	SOIL_free_image_data(image);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Whireframe draw mode
 
+	//Key callback
+	glfwSetKeyCallback(window, key_callback);
+	
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -254,24 +302,34 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-		//Shader transformatin
-		/*
-		GLfloat timeValue = glfwGetTime();
-		GLfloat greenValue = (sin(timeValue) / 2) + 0.5;
-		GLint vertexColorLocation = glGetUniformLocation(shaderProgram, "outColor");
-		*/
+		//Textures
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture1);
+		glUniform1i(glGetUniformLocation(shaderProgram, "ourTexture1"), 0);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, texture2);
+		glUniform1i(glGetUniformLocation(shaderProgram, "ourTexture2"), 1);
+
+		//--Shader transformatin
+		//GLfloat timeValue = glfwGetTime();
+		//GLfloat intensityValue = (sin(timeValue) / 2) + 0.5;
+		GLint intensityLocation = glGetUniformLocation(shaderProgram, "intensity");
+		glUniform1f(intensityLocation, g_offset);
+		//glUniform4f(vertexOffsetLocation, shiftValue, 0.1f, 0.0f, 0.0f);
+
 		glUseProgram(shaderProgram);
-		/*
-		glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-		*/
+
 		//Draw image
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 		glfwSwapBuffers(window);
 	}
 	// Delete all data
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteBuffers(1, &VBO);
+	glDeleteBuffers(1, &EBO);
 	glfwTerminate();
 	return 0;
 }
