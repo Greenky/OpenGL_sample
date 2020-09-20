@@ -164,7 +164,6 @@ int main (int argc, char** argv)
 			readKey(fd_config, key);
 			if (showInfo == 1)
 			{
-				printf("Key: ");
 				for (int i = 0; i < 16; ++i)
 				{
 					printf("%02X", (unsigned int)(key[i] & 0xFF));
